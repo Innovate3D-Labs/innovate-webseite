@@ -28,7 +28,7 @@ export default function ProductDetail({ productId }: ProductDetailProps) {
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  const { addToCart } = useCart();
+  const { dispatch } = useCart();
 
   useEffect(() => {
     fetchProduct();
@@ -50,12 +50,15 @@ export default function ProductDetail({ productId }: ProductDetailProps) {
 
   const handleAddToCart = () => {
     if (product) {
-      addToCart({
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        image: product.images[0] || '/images/placeholder.jpg',
-        quantity
+      dispatch({
+        type: 'ADD_ITEM',
+        payload: {
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          image: product.images[0] || '/images/placeholder.jpg',
+          category: product.category || 'Produkt'
+        }
       });
     }
   };

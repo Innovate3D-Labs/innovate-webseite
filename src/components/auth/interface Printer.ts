@@ -1,3 +1,18 @@
+interface PrinterSettings {
+  temperature: {
+    hotend: number;
+    bed: number;
+  };
+  speeds: {
+    print: number;
+    travel: number;
+  };
+  filament: {
+    type: string;
+    diameter: number;
+  };
+}
+
 interface Printer {
   id: string;
   serialNumber: string;
@@ -8,3 +23,5 @@ interface Printer {
   sharedUsers: string[];
   settings: PrinterSettings;
 }
+
+export type { Printer, PrinterSettings };

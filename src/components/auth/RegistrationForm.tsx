@@ -1,28 +1,32 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
-import Button from '@/components/ui/Button';
+import { useState } from 'react'
+import { motion } from 'framer-motion'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import Button from '@/components/ui/Button'
+import Card from '@/components/ui/Card'
+import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
+import { notify } from '@/components/ui/NotificationSystem'
 
 interface FormData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-  acceptTerms: boolean;
-  newsletter: boolean;
+  firstName: string
+  lastName: string
+  email: string
+  password: string
+  confirmPassword: string
+  acceptTerms: boolean
+  newsletter: boolean
 }
 
 interface FormErrors {
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  password?: string;
-  confirmPassword?: string;
-  acceptTerms?: string;
-  general?: string;
+  firstName?: string
+  lastName?: string
+  email?: string
+  password?: string
+  confirmPassword?: string
+  acceptTerms?: string
+  general?: string
 }
 
 export default function RegistrationForm() {
@@ -34,33 +38,34 @@ export default function RegistrationForm() {
     confirmPassword: '',
     acceptTerms: false,
     newsletter: false,
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [success, setSuccess] = useState(false);
-  const router = useRouter();
+  })
+  const [isLoading, setIsLoading] = useState(false)
+  const [errors, setErrors] = useState<FormErrors>({})
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setErrors({});
+    e.preventDefault()
+    setIsLoading(true)
+    setErrors({})
     
     // Validation
-    const newErrors: FormErrors = {};
-    if (!formData.firstName) newErrors.firstName = 'Vorname ist erforderlich';
-    if (!formData.lastName) newErrors.lastName = 'Nachname ist erforderlich';
-    if (!formData.email) newErrors.email = 'E-Mail ist erforderlich';
-    if (!formData.password) newErrors.password = 'Passwort ist erforderlich';
-    if (formData.password.length < 6) newErrors.password = 'Passwort muss mindestens 6 Zeichen lang sein';
+    const newErrors: FormErrors = {}
+    if (!formData.firstName) newErrors.firstName = 'Vorname ist erforderlich'
+    if (!formData.lastName) newErrors.lastName = 'Nachname ist erforderlich'
+    if (!formData.email) newErrors.email = 'E-Mail ist erforderlich'
+    if (!formData.password) newErrors.password = 'Passwort ist erforderlich'
+    if (formData.password.length < 6) newErrors.password = 'Passwort muss mindestens 6 Zeichen lang sein'
     if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwörter stimmen nicht überein';
+      newErrors.confirmPassword = 'Passwörter stimmen nicht überein'
     }
-    if (!formData.acceptTerms) newErrors.acceptTerms = 'Sie müssen die AGB akzeptieren';
+    if (!formData.acceptTerms) newErrors.acceptTerms = 'Sie müssen die AGB akzeptieren'
 
     if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      setIsLoading(false);
-      return;
+      setErrors(newErrors)
+      setIsLoading(false)
+      return
     }
 
     try {
@@ -75,216 +80,241 @@ export default function RegistrationForm() {
           email: formData.email,
           password: formData.password,
         }),
-      });
+      })
 
-      const data = await response.json();
+      const data = await response.json()
 
       if (response.ok) {
-        setSuccess(true);
+        notify.success('Registrierung erfolgreich!', 'Ihr Konto wurde erstellt. Sie werden zur Anmeldung weitergeleitet.')
         // Redirect to login page after 2 seconds
         setTimeout(() => {
-          router.push('/auth/login?message=registration-success');
-        }, 2000);
+          router.push('/auth/login')
+        }, 2000)
       } else {
-        setErrors({ general: data.error || 'Registrierung fehlgeschlagen' });
+        const errorMessage = data.error || 'Registrierung fehlgeschlagen'
+        setErrors({ general: errorMessage })
+        notify.error('Registrierung fehlgeschlagen', errorMessage)
       }
     } catch (error) {
-      setErrors({ general: 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.' });
+      const errorMessage = 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.'
+      setErrors({ general: errorMessage })
+      notify.error('Fehler', errorMessage)
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value, type, checked } = e.target
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
-    }));
+    }))
     // Clear error when user starts typing
     if (errors[name as keyof FormErrors]) {
-      setErrors(prev => ({ ...prev, [name]: undefined }));
+      setErrors(prev => ({ ...prev, [name]: undefined }))
     }
-  };
-
-  if (success) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="text-center p-8 bg-green-50 rounded-xl border border-green-200"
-      >
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <h3 className="text-lg font-semibold text-green-800 mb-2">Registrierung erfolgreich!</h3>
-        <p className="text-green-600">Sie werden in Kürze zur Anmeldung weitergeleitet...</p>
-      </motion.div>
-    );
   }
 
   return (
-    <motion.form
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      onSubmit={handleSubmit}
-      className="space-y-6"
+      transition={{ duration: 0.6 }}
     >
-      {errors.general && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
-          <p className="text-red-600 text-sm">{errors.general}</p>
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-            Vorname
-          </label>
-          <input
-            id="firstName"
-            name="firstName"
-            type="text"
-            value={formData.firstName}
-            onChange={handleChange}
-            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-              errors.firstName ? 'border-red-300' : ''
-            }`}
-          />
-          {errors.firstName && (
-            <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>
-          )}
+      <Card className="p-8">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-sf-pro-display font-bold text-apple-gray-900 mb-2">
+            Konto erstellen
+          </h1>
+          <p className="text-apple-gray-600">
+            Registrieren Sie sich für Ihr Innovate3D Konto
+          </p>
         </div>
 
-        <div>
-          <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
-            Nachname
-          </label>
-          <input
-            id="lastName"
-            name="lastName"
-            type="text"
-            value={formData.lastName}
-            onChange={handleChange}
-            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-              errors.lastName ? 'border-red-300' : ''
-            }`}
-          />
-          {errors.lastName && (
-            <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>
-          )}
-        </div>
-      </div>
-
-      <div>
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-          E-Mail-Adresse
-        </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          value={formData.email}
-          onChange={handleChange}
-          className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-            errors.email ? 'border-red-300' : ''
-          }`}
-        />
-        {errors.email && (
-          <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-        )}
-      </div>
-
-      <div>
-        <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-          Passwort
-        </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          value={formData.password}
-          onChange={handleChange}
-          className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-            errors.password ? 'border-red-300' : ''
-          }`}
-        />
-        {errors.password && (
-          <p className="mt-1 text-sm text-red-600">{errors.password}</p>
-        )}
-      </div>
-
-      <div>
-        <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-          Passwort bestätigen
-        </label>
-        <input
-          id="confirmPassword"
-          name="confirmPassword"
-          type="password"
-          value={formData.confirmPassword}
-          onChange={handleChange}
-          className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-            errors.confirmPassword ? 'border-red-300' : ''
-          }`}
-        />
-        {errors.confirmPassword && (
-          <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
-        )}
-      </div>
-
-      <div className="space-y-4">
-        <div className="flex items-center">
-          <input
-            id="acceptTerms"
-            name="acceptTerms"
-            type="checkbox"
-            checked={formData.acceptTerms}
-            onChange={handleChange}
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-          />
-          <label htmlFor="acceptTerms" className="ml-2 block text-sm text-gray-900">
-            Ich akzeptiere die{' '}
-            <a href="/terms" className="text-blue-600 hover:text-blue-500">
-              Allgemeinen Geschäftsbedingungen
-            </a>{' '}
-            und{' '}
-            <a href="/privacy" className="text-blue-600 hover:text-blue-500">
-              Datenschutzerklärung
-            </a>
-          </label>
-        </div>
-        {errors.acceptTerms && (
-          <p className="text-sm text-red-600">{errors.acceptTerms}</p>
+        {errors.general && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+            <p className="text-red-600 text-sm">{errors.general}</p>
+          </div>
         )}
 
-        <div className="flex items-center">
-          <input
-            id="newsletter"
-            name="newsletter"
-            type="checkbox"
-            checked={formData.newsletter}
-            onChange={handleChange}
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-          />
-          <label htmlFor="newsletter" className="ml-2 block text-sm text-gray-900">
-            Ich möchte den Newsletter erhalten (optional)
-          </label>
-        </div>
-      </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-sf-pro-text font-medium text-apple-gray-700 mb-2">
+                Vorname
+              </label>
+              <input
+                type="text"
+                name="firstName"
+                value={formData.firstName}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-apple-border rounded-xl focus:ring-2 focus:ring-apple-blue focus:border-transparent transition-all"
+                placeholder="Max"
+                required
+              />
+              {errors.firstName && (
+                <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>
+              )}
+            </div>
 
-      <Button
-        type="submit"
-        variant="primary"
-        size="lg"
-        className="w-full"
-        disabled={isLoading}
-      >
-        {isLoading ? 'Konto wird erstellt...' : 'Konto erstellen'}
-      </Button>
-    </motion.form>
-  );
+            <div>
+              <label className="block text-sm font-sf-pro-text font-medium text-apple-gray-700 mb-2">
+                Nachname
+              </label>
+              <input
+                type="text"
+                name="lastName"
+                value={formData.lastName}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-apple-border rounded-xl focus:ring-2 focus:ring-apple-blue focus:border-transparent transition-all"
+                placeholder="Mustermann"
+                required
+              />
+              {errors.lastName && (
+                <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-sf-pro-text font-medium text-apple-gray-700 mb-2">
+              E-Mail-Adresse
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="w-full px-4 py-3 border border-apple-border rounded-xl focus:ring-2 focus:ring-apple-blue focus:border-transparent transition-all"
+              placeholder="ihre@email.de"
+              required
+            />
+            {errors.email && (
+              <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-sf-pro-text font-medium text-apple-gray-700 mb-2">
+              Passwort
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                className="w-full px-4 py-3 pr-12 border border-apple-border rounded-xl focus:ring-2 focus:ring-apple-blue focus:border-transparent transition-all"
+                placeholder="Mindestens 6 Zeichen"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-apple-gray-400 hover:text-apple-gray-600"
+              >
+                {showPassword ? (
+                  <EyeSlashIcon className="w-5 h-5" />
+                ) : (
+                  <EyeIcon className="w-5 h-5" />
+                )}
+              </button>
+            </div>
+            {errors.password && (
+              <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-sf-pro-text font-medium text-apple-gray-700 mb-2">
+              Passwort bestätigen
+            </label>
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className="w-full px-4 py-3 pr-12 border border-apple-border rounded-xl focus:ring-2 focus:ring-apple-blue focus:border-transparent transition-all"
+                placeholder="Passwort wiederholen"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-apple-gray-400 hover:text-apple-gray-600"
+              >
+                {showConfirmPassword ? (
+                  <EyeSlashIcon className="w-5 h-5" />
+                ) : (
+                  <EyeIcon className="w-5 h-5" />
+                )}
+              </button>
+            </div>
+            {errors.confirmPassword && (
+              <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            <label className="flex items-start">
+              <input
+                type="checkbox"
+                name="acceptTerms"
+                checked={formData.acceptTerms}
+                onChange={handleChange}
+                className="mt-1 rounded border-apple-border text-apple-blue focus:ring-apple-blue"
+              />
+              <span className="ml-2 text-sm text-apple-gray-600">
+                Ich akzeptiere die{' '}
+                <Link href="/terms" className="text-apple-blue hover:text-apple-blue-dark">
+                  Allgemeinen Geschäftsbedingungen
+                </Link>{' '}
+                und die{' '}
+                <Link href="/privacy" className="text-apple-blue hover:text-apple-blue-dark">
+                  Datenschutzerklärung
+                </Link>
+              </span>
+            </label>
+            {errors.acceptTerms && (
+              <p className="text-sm text-red-600">{errors.acceptTerms}</p>
+            )}
+
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                name="newsletter"
+                checked={formData.newsletter}
+                onChange={handleChange}
+                className="rounded border-apple-border text-apple-blue focus:ring-apple-blue"
+              />
+              <span className="ml-2 text-sm text-apple-gray-600">
+                Ich möchte den Newsletter erhalten (optional)
+              </span>
+            </label>
+          </div>
+
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            className="w-full"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Konto wird erstellt...' : 'Konto erstellen'}
+          </Button>
+        </form>
+
+        <div className="mt-8 text-center">
+          <p className="text-apple-gray-600">
+            Bereits ein Konto?{' '}
+            <Link href="/auth/login" className="text-apple-blue hover:text-apple-blue-dark font-medium">
+              Jetzt anmelden
+            </Link>
+          </p>
+        </div>
+      </Card>
+    </motion.div>
+  )
 }

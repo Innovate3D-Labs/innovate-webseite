@@ -3,6 +3,9 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import jwt from 'jsonwebtoken';
+import { handleApiError, AppError, ErrorCode } from '@/lib/error-handler';
+import { rateLimiters } from '@/lib/rate-limiter';
+import { analytics, AnalyticsEvent } from '@/lib/analytics';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -11,6 +14,9 @@ const loginSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Apply rate limiting
+    await rateLimiters.auth(request);
+
     const body = await request.json();
     const { email, password } = loginSchema.parse(body);
 
@@ -27,18 +33,20 @@ export async function POST(request: NextRequest) {
     });
 
     if (!user) {
-      return NextResponse.json(
-        { error: 'Ungültige Anmeldedaten' },
-        { status: 401 }
+      throw new AppError(
+        ErrorCode.AUTHENTICATION_ERROR,
+        'Ungültige Anmeldedaten',
+        401
       );
     }
 
     // Passwort prüfen
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
-      return NextResponse.json(
-        { error: 'Ungültige Anmeldedaten' },
-        { status: 401 }
+      throw new AppError(
+        ErrorCode.AUTHENTICATION_ERROR,
+        'Ungültige Anmeldedaten',
+        401
       );
     }
 
@@ -52,6 +60,12 @@ export async function POST(request: NextRequest) {
     // Benutzer-Daten ohne Passwort
     const { password: _, ...userWithoutPassword } = user;
 
+    // Track successful login
+    analytics.track(AnalyticsEvent.USER_LOGIN, {
+      userId: user.id,
+      email: user.email
+    });
+
     return NextResponse.json({
       user: userWithoutPassword,
       token,
@@ -59,18 +73,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Login-Fehler:', error);
-    
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Ungültige Eingabedaten', details: error.errors },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json(
-      { error: 'Interner Serverfehler' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'login');
   }
 }

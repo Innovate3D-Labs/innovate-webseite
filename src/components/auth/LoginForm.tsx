@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import { useAuth } from '@/lib/context/AuthContext'
+import { notify } from '@/components/ui/NotificationSystem'
 
 const LoginForm = () => {
   const [formData, setFormData] = useState({
@@ -49,13 +50,20 @@ const LoginForm = () => {
         // Use Auth Context login function
         login(data.token, data.user)
         
+        // Show success notification
+        notify.success('Erfolgreich angemeldet', `Willkommen zurück, ${data.user.firstName}!`)
+        
         // Redirect to profile or home
         router.push('/profile')
       } else {
-        setError(data.error || 'Anmeldung fehlgeschlagen')
+        const errorMessage = data.error?.message || data.error || 'Anmeldung fehlgeschlagen'
+        setError(errorMessage)
+        notify.error('Anmeldung fehlgeschlagen', errorMessage)
       }
     } catch (error) {
-      setError('Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.')
+      const errorMessage = 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.'
+      setError(errorMessage)
+      notify.error('Fehler', errorMessage)
     } finally {
       setIsLoading(false)
     }

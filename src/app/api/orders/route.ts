@@ -1,118 +1,145 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { z } from 'zod';
-import jwt from 'jsonwebtoken';
 
-const createOrderSchema = z.object({
-  items: z.array(z.object({
-    productId: z.string(),
-    quantity: z.number().min(1),
-    price: z.number().min(0)
-  })),
-  shippingAddress: z.object({
-    street: z.string(),
-    city: z.string(),
-    postalCode: z.string(),
-    country: z.string(),
-    firstName: z.string(),
-    lastName: z.string()
-  }),
-  paymentMethod: z.string()
-});
-
-// Bestellungen abrufen
+// GET /api/orders - Get user's orders
 export async function GET(request: NextRequest) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Nicht autorisiert' }, { status: 401 });
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
-    
-    const orders = await prisma.order.findMany({
-      where: { userId: decoded.userId },
-      include: {
-        items: {
-          include: {
-            product: true
+    // Mock orders data - in production, fetch from database with proper auth
+    const mockOrders = [
+      {
+        id: '1',
+        userId: 'user_123',
+        totalAmount: 299.99,
+        status: 'DELIVERED',
+        paymentMethod: 'CARD',
+        createdAt: new Date('2024-01-15').toISOString(),
+        updatedAt: new Date('2024-01-20').toISOString(),
+        shippingAddress: {
+          firstName: 'John',
+          lastName: 'Doe',
+          street: 'Musterstraße 123',
+          city: 'Berlin',
+          postalCode: '10115',
+          country: 'Deutschland'
+        },
+        items: [
+          {
+            id: '1',
+            productId: 'printer-starter',
+            quantity: 1,
+            price: 299.99,
+            product: {
+              name: 'Innovate3D Starter',
+              image: '/images/products/printer-starter.jpg'
+            }
           }
-        }
+        ]
       },
-      orderBy: { createdAt: 'desc' }
-    });
+      {
+        id: '2',
+        userId: 'user_123',
+        totalAmount: 89.99,
+        status: 'SHIPPED',
+        paymentMethod: 'PAYPAL',
+        createdAt: new Date('2024-01-10').toISOString(),
+        updatedAt: new Date('2024-01-12').toISOString(),
+        shippingAddress: {
+          firstName: 'John',
+          lastName: 'Doe',
+          street: 'Musterstraße 123',
+          city: 'Berlin',
+          postalCode: '10115',
+          country: 'Deutschland'
+        },
+        items: [
+          {
+            id: '2',
+            productId: 'filament-premium',
+            quantity: 3,
+            price: 29.99,
+            product: {
+              name: 'Premium PLA+ Filament',
+              image: '/images/products/filament-set.jpg'
+            }
+          }
+        ]
+      }
+    ];
 
-    return NextResponse.json({ orders });
+    return NextResponse.json({ orders: mockOrders });
 
   } catch (error) {
-    console.error('Bestellungen abrufen Fehler:', error);
+    console.error('Error fetching orders:', error);
     return NextResponse.json(
-      { error: 'Fehler beim Laden der Bestellungen' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
 }
 
-// Neue Bestellung erstellen
+// POST /api/orders - Create new order
 export async function POST(request: NextRequest) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Nicht autorisiert' }, { status: 401 });
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
     const body = await request.json();
-    const { items, shippingAddress, paymentMethod } = createOrderSchema.parse(body);
+    const { items, shippingAddress, paymentMethod } = body;
 
-    // Gesamtpreis berechnen
-    const totalAmount = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-
-    // Bestellung erstellen
-    const order = await prisma.order.create({
-      data: {
-        userId: decoded.userId,
-        totalAmount,
-        status: 'PENDING',
-        paymentMethod,
-        shippingAddress: {
-          create: shippingAddress
-        },
-        items: {
-          create: items.map(item => ({
-            productId: item.productId,
-            quantity: item.quantity,
-            price: item.price
-          }))
-        }
-      },
-      include: {
-        items: {
-          include: {
-            product: true
-          }
-        },
-        shippingAddress: true
-      }
-    });
-
-    return NextResponse.json({
-      order,
-      message: 'Bestellung erfolgreich erstellt'
-    });
-
-  } catch (error) {
-    console.error('Bestellung erstellen Fehler:', error);
-    
-    if (error instanceof z.ZodError) {
+    // Validate required fields
+    if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
-        { error: 'Ungültige Bestelldaten', details: error.errors },
+        { error: 'Items are required' },
         { status: 400 }
       );
     }
 
+    if (!shippingAddress) {
+      return NextResponse.json(
+        { error: 'Shipping address is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!paymentMethod) {
+      return NextResponse.json(
+        { error: 'Payment method is required' },
+        { status: 400 }
+      );
+    }
+
+    // Calculate total amount
+    const totalAmount = items.reduce((sum: number, item: any) => {
+      return sum + (item.price * item.quantity);
+    }, 0);
+
+    // Mock order creation - in production, save to database
+    const newOrder = {
+      id: Date.now().toString(),
+      userId: 'user_123', // In production, get from JWT token
+      totalAmount,
+      status: 'PENDING',
+      paymentMethod,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      shippingAddress,
+      items: items.map((item: any, index: number) => ({
+        id: (Date.now() + index).toString(),
+        productId: item.productId,
+        quantity: item.quantity,
+        price: item.price,
+        product: {
+          name: item.productName || 'Product',
+          image: item.productImage || '/images/products/default.jpg'
+        }
+      }))
+    };
+
+    return NextResponse.json({ 
+      order: newOrder,
+      message: 'Order created successfully' 
+    }, { status: 201 });
+
+  } catch (error) {
+    console.error('Error creating order:', error);
     return NextResponse.json(
-      { error: 'Fehler beim Erstellen der Bestellung' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

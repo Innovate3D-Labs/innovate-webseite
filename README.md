@@ -81,7 +81,7 @@ innovate-webseite/
 
 ## 📄 License
 
-Copyright © 2024 Innovate3D Labs. All rights reserved.
+Copyright © 2025 Innovate3D Labs. All rights reserved.
 
 ## 🤝 Contributing
 
@@ -89,7 +89,7 @@ Please read our contributing guidelines before submitting pull requests.
 
 ## 📞 Contact
 
-- Website: [innovate3d.labs](https://innovate3d.labs)
+- Website: [innovate3d.labs](https://innovate3d-labs.de)
 - Email: info@innovate3d.labs
 
 ---

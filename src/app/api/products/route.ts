@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { handleApiError } from '@/lib/error-handler';
+import { rateLimiters } from '@/lib/rate-limiter';
+import { getCachedProducts } from '@/lib/cache';
 
 const productQuerySchema = z.object({
   category: z.string().optional(),
@@ -13,43 +16,26 @@ const productQuerySchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
+    // Apply rate limiting
+    await rateLimiters.public(request);
+
     const { searchParams } = new URL(request.url);
     const query = productQuerySchema.parse(Object.fromEntries(searchParams));
     
     const page = parseInt(query.page || '1');
     const limit = parseInt(query.limit || '12');
-    const skip = (page - 1) * limit;
+    
+    // Use cached products
+    const params = {
+      page,
+      limit,
+      category: query.category,
+      search: query.search,
+      minPrice: query.minPrice ? parseFloat(query.minPrice) : undefined,
+      maxPrice: query.maxPrice ? parseFloat(query.maxPrice) : undefined,
+    };
 
-    // Filter aufbauen
-    const where: any = {};
-    
-    if (query.category) {
-      where.category = query.category;
-    }
-    
-    if (query.search) {
-      where.OR = [
-        { name: { contains: query.search, mode: 'insensitive' } },
-        { description: { contains: query.search, mode: 'insensitive' } },
-      ];
-    }
-    
-    if (query.minPrice || query.maxPrice) {
-      where.price = {};
-      if (query.minPrice) where.price.gte = parseFloat(query.minPrice);
-      if (query.maxPrice) where.price.lte = parseFloat(query.maxPrice);
-    }
-
-    // Produkte abrufen
-    const [products, total] = await Promise.all([
-      prisma.product.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-      }),
-      prisma.product.count({ where })
-    ]);
+    const { products, total } = await getCachedProducts(params);
 
     return NextResponse.json({
       products,
@@ -62,10 +48,6 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Produkte-API Fehler:', error);
-    return NextResponse.json(
-      { error: 'Fehler beim Laden der Produkte' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'products.get');
   }
 }

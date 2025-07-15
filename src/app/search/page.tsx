@@ -7,11 +7,12 @@ export const metadata: Metadata = {
 };
 
 interface SearchPageProps {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default function SearchPage({ searchParams }: SearchPageProps) {
-  const category = typeof searchParams.category === 'string' ? searchParams.category : '';
+export default async function SearchPage({ searchParams }: SearchPageProps) {
+  const params = await searchParams;
+  const category = typeof params.category === 'string' ? params.category : '';
   
   return (
     <div className="min-h-screen bg-gray-50">
