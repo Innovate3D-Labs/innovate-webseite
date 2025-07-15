@@ -1,0 +1,357 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PrinterStatus {
+  ONLINE
+  OFFLINE
+  PRINTING
+  ERROR
+  MAINTENANCE
+}
+
+enum PrintJobStatus {
+  QUEUED
+  PRINTING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum AccountType {
+  OWNER
+  SHARED
+  GUEST
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  phone     String?
+  role      UserRole @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Password Reset Felder
+  resetToken    String?   @unique
+  resetTokenExp DateTime?
+  emailVerified Boolean   @default(false)
+  verifyToken   String?   @unique
+  
+  // Profile fields for MakerWorld
+  username      String?   @unique
+  bio           String?   @db.Text
+  avatarUrl     String?
+  location      String?
+  website       String?
+
+  // Beziehungen
+  addresses       Address[]
+  orders          Order[]
+  ownedPrinters   Printer[]        @relation("PrinterOwner")
+  printerAccounts PrinterAccount[]
+  
+  // MakerWorld relationships
+  designs         Design[]
+  designLikes     DesignLike[]
+  comments        Comment[]
+  collections     Collection[]
+
+  @@map("users")
+}
+
+model Address {
+  id         String   @id @default(cuid())
+  firstName  String
+  lastName   String
+  street     String
+  city       String
+  postalCode String
+  country    String
+  isDefault  Boolean  @default(false)
+  userId     String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Beziehungen
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@map("addresses")
+}
+
+model Product {
+  id            String   @id @default(cuid())
+  name          String
+  description   String
+  price         Float
+  category      String
+  // SQLite-kompatibel: JSON als String speichern
+  images        String   @default("[]")
+  inStock       Boolean  @default(true)
+  stockQuantity Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Beziehungen
+  orderItems OrderItem[]
+
+  @@map("products")
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  totalAmount   Float
+  status        OrderStatus @default(PENDING)
+  paymentMethod String
+  userId        String
+  addressId     String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // Beziehungen
+  user            User        @relation(fields: [userId], references: [id])
+  shippingAddress Address     @relation(fields: [addressId], references: [id])
+  items           OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String @id @default(cuid())
+  quantity  Int
+  price     Float
+  orderId   String
+  productId String
+
+  // Beziehungen
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model Printer {
+  id           String        @id @default(cuid())
+  serialNumber String        @unique
+  model        String
+  status       PrinterStatus @default(OFFLINE)
+  ownerId      String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Beziehungen
+  owner     User             @relation("PrinterOwner", fields: [ownerId], references: [id])
+  accounts  PrinterAccount[]
+  printJobs PrintJob[]
+
+  @@map("printers")
+}
+
+model PrinterAccount {
+  id          String      @id @default(cuid())
+  userId      String
+  printerId   String
+  accountType AccountType
+  // SQLite-kompatibel: JSON als String speichern
+  permissions String      @default("[]")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Beziehungen
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  printer Printer @relation(fields: [printerId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, printerId])
+  @@map("printer_accounts")
+}
+
+model PrintJob {
+  id        String         @id @default(cuid())
+  fileName  String
+  status    PrintJobStatus @default(QUEUED)
+  printerId String
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  // Beziehungen
+  printer Printer @relation(fields: [printerId], references: [id], onDelete: Cascade)
+
+  @@map("print_jobs")
+}
+
+// MakerWorld Feature Models
+enum DesignStatus {
+  DRAFT
+  PUBLISHED
+  PRIVATE
+  ARCHIVED
+}
+
+enum FileType {
+  STL
+  GCODE
+  OBJ
+  STEP
+  F3D
+  IMAGE
+}
+
+model Design {
+  id            String       @id @default(cuid())
+  title         String
+  description   String       @db.Text
+  status        DesignStatus @default(DRAFT)
+  userId        String
+  
+  // Print settings
+  layerHeight   Float?
+  infillPercent Int?
+  printTime     Int?         // minutes
+  filamentUsage Float?       // grams
+  
+  // Stats
+  viewCount     Int          @default(0)
+  downloadCount Int          @default(0)
+  likeCount     Int          @default(0)
+  
+  // SEO
+  slug          String       @unique
+  tags          String[]     @default([])
+  
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  publishedAt   DateTime?
+  
+  // Relationships
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  files         DesignFile[]
+  likes         DesignLike[]
+  comments      Comment[]
+  collections   CollectionDesign[]
+  remixes       Design[]     @relation("DesignRemixes")
+  remixOf       Design?      @relation("DesignRemixes", fields: [remixOfId], references: [id])
+  remixOfId     String?
+  
+  @@index([userId])
+  @@index([status])
+  @@index([publishedAt])
+  @@map("designs")
+}
+
+model DesignFile {
+  id         String   @id @default(cuid())
+  designId   String
+  fileName   String
+  fileType   FileType
+  fileSize   Int      // bytes
+  fileUrl    String
+  
+  // Thumbnail for preview
+  thumbnailUrl String?
+  
+  // For 3D files
+  vertices   Int?
+  triangles  Int?
+  
+  createdAt  DateTime @default(now())
+  
+  // Relationships
+  design     Design   @relation(fields: [designId], references: [id], onDelete: Cascade)
+  
+  @@index([designId])
+  @@map("design_files")
+}
+
+model DesignLike {
+  id        String   @id @default(cuid())
+  userId    String
+  designId  String
+  createdAt DateTime @default(now())
+  
+  // Relationships
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  design    Design   @relation(fields: [designId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, designId])
+  @@map("design_likes")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  userId    String
+  designId  String
+  parentId  String?  // For nested comments
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relationships
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  design    Design   @relation(fields: [designId], references: [id], onDelete: Cascade)
+  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   Comment[] @relation("CommentReplies")
+  
+  @@index([designId])
+  @@index([parentId])
+  @@map("comments")
+}
+
+model Collection {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isPublic    Boolean  @default(true)
+  userId      String
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relationships
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  designs     CollectionDesign[]
+  
+  @@index([userId])
+  @@map("collections")
+}
+
+model CollectionDesign {
+  id           String     @id @default(cuid())
+  collectionId String
+  designId     String
+  addedAt      DateTime   @default(now())
+  
+  // Relationships
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  design       Design     @relation(fields: [designId], references: [id], onDelete: Cascade)
+  
+  @@unique([collectionId, designId])
+  @@map("collection_designs")
+}

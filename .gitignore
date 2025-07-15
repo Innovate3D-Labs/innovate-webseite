@@ -1,0 +1,69 @@
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Testing
+/coverage
+
+# Next.js
+/.next/
+/out/
+
+# Production
+/build
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Local env files
+.env*.local
+.env
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# macOS
+._*
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+.Spotlight-V100
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Editor directories and files
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# Logs
+logs
+*.log
+
+# OS generated files
+Thumbs.db
+Desktop.ini
+
+# Generated files
+/generated/prisma-client 
