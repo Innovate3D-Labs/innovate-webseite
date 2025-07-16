@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Navigation from '@/components/layout/Navigation'
 import Footer from '@/components/layout/Footer'
 import SectionSeparator from '@/components/ui/SectionSeparator'
+import { useAuth } from '@/lib/context/AuthContext'
 import { 
   WifiIcon, 
   ArrowLeftIcon, 
@@ -50,7 +51,34 @@ interface PrinterDetails {
 export default function PrinterDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
+  const { user, isLoading } = useAuth()
+  const [isConnecting, setIsConnecting] = useState(false)
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.push('/auth/login?redirect=/printers')
+    }
+  }, [user, isLoading, router])
+
+  // Don't render if not authenticated
+  if (isLoading) {
+    return (
+      <>
+        <Navigation />
+        <main className="min-h-screen pt-20 bg-gray-50">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+          </div>
+        </main>
+        <Footer />
+      </>
+    )
+  }
+
+  if (!user) {
+    return null
+  }
   
   // Mock printer data - in real app, fetch from API
   const [printer] = useState<PrinterDetails>({
@@ -85,18 +113,18 @@ export default function PrinterDetailPage() {
   const [showSettings, setShowSettings] = useState(false)
 
   const handlePause = () => {
-    setIsLoading(true)
+    setIsConnecting(true)
     setTimeout(() => {
-      setIsLoading(false)
+      setIsConnecting(false)
       notify.success('Druck pausiert', 'Der Druckvorgang wurde erfolgreich pausiert.')
     }, 1000)
   }
 
   const handleStop = () => {
     if (confirm('Möchten Sie den Druck wirklich abbrechen?')) {
-      setIsLoading(true)
+      setIsConnecting(true)
       setTimeout(() => {
-        setIsLoading(false)
+        setIsConnecting(false)
         notify.warning('Druck abgebrochen', 'Der Druckvorgang wurde abgebrochen.')
         router.push('/printers')
       }, 1000)
@@ -111,9 +139,9 @@ export default function PrinterDetailPage() {
   }
 
   const applyTemperatures = () => {
-    setIsLoading(true)
+    setIsConnecting(true)
     setTimeout(() => {
-      setIsLoading(false)
+      setIsConnecting(false)
       notify.success('Temperaturen aktualisiert', 'Die Zieltemperaturen wurden erfolgreich gesetzt.')
     }, 1000)
   }

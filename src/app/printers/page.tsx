@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Navigation from '@/components/layout/Navigation'
 import Footer from '@/components/layout/Footer'
 import SectionSeparator from '@/components/ui/SectionSeparator'
+import { useAuth } from '@/lib/context/AuthContext'
 import { 
   WifiIcon, 
   PlusIcon, 
@@ -31,6 +32,7 @@ interface Printer {
 
 export default function PrintersPage() {
   const router = useRouter()
+  const { user, isLoading } = useAuth()
   const [printers, setPrinters] = useState<Printer[]>([])
   const [showAddPrinter, setShowAddPrinter] = useState(false)
   const [setupMethod, setSetupMethod] = useState<'code' | 'manual'>('code')
@@ -41,6 +43,39 @@ export default function PrintersPage() {
     model: ''
   })
   const [isConnecting, setIsConnecting] = useState(false)
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isLoading && !user) {
+      notify.error('Anmeldung erforderlich', 'Sie müssen sich anmelden, um Ihre Drucker zu verwalten.')
+      router.push('/auth/login?redirect=/printers')
+    }
+  }, [user, isLoading, router])
+
+  // Show loading spinner while checking authentication
+  if (isLoading) {
+    return (
+      <>
+        <Navigation />
+        <main className="min-h-screen pt-20 bg-gray-50">
+          <div className="max-w-7xl mx-auto px-6 lg:px-8 py-12">
+            <div className="flex items-center justify-center min-h-[400px]">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+                <p className="text-gray-600">Laden...</p>
+              </div>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </>
+    )
+  }
+
+  // Don't render the page content if user is not authenticated
+  if (!user) {
+    return null
+  }
 
   // Simulate setup codes for different printer models
   const validSetupCodes = {
