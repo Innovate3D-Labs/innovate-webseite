@@ -42,12 +42,21 @@ const Navigation = () => {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  const navItems = [
+  // Base navigation items - always visible
+  const baseNavItems = [
     { name: 'Home', href: '/', icon: null },
     { name: 'Produkte', href: '/products', icon: ShoppingBagIcon },
     { name: 'MakerWorld', href: '/makerworld', icon: CubeIcon },
+  ]
+
+  // User-specific navigation items - only shown when logged in
+  const userNavItems = [
     { name: 'Meine Drucker', href: '/printers', icon: CommandLineIcon },
   ]
+
+  // Combine navigation items based on auth status
+  const navItems = user ? [...baseNavItems, ...userNavItems] : baseNavItems
+
 
   const handleLogout = () => {
     logout()
